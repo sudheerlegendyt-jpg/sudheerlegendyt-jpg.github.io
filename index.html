@@ -2280,8 +2280,16 @@
         }
 
         function updateResultDateOptions(selectedDate = '') {
-            const config=getAppConfig(), time=document.getElementById('resultTimeSelect')?.value||'', lobby=document.getElementById('resultLobbySelect')?.value||'L1', ds=document.getElementById('resultDateSelect');
-            if(!ds)return; const dates=[...new Set((config.resultsList||[]).filter(r=>r.slot===time&&(r.lobby||'L1')===lobby&&r.date).map(r=>r.date))].sort().reverse();
+            const time=document.getElementById('resultTimeSelect')?.value||'', lobby=document.getElementById('resultLobbySelect')?.value||'L1', ds=document.getElementById('resultDateSelect');
+            if(!ds)return;
+            // Prefer the LIVE Firebase results (rsViewerResults) already fetched for
+            // the unlocked secret code; fall back to the per-device localStorage
+            // copy only if that live data isn't populated yet.
+            let dates=[...new Set((rsViewerResults||[]).filter(r=>r.slot===time&&(r.lobby||'L1')===lobby&&r.date).map(r=>r.date))].sort().reverse();
+            if(!dates.length){
+                const config=getAppConfig();
+                dates=[...new Set((config.resultsList||[]).filter(r=>r.slot===time&&(r.lobby||'L1')===lobby&&r.date).map(r=>r.date))].sort().reverse();
+            }
             ds.innerHTML=dates.length?dates.map(d=>`<option value="${d}">${d}</option>`).join(''):'<option value="">No result date available</option>';
             if(selectedDate&&dates.includes(selectedDate))ds.value=selectedDate;
         }
@@ -2328,8 +2336,14 @@
         }
 
         function displaySelectedResult(){
-            const c=getAppConfig(), t=document.getElementById('resultTimeSelect')?.value||'', l=document.getElementById('resultLobbySelect')?.value||'L1', ds=document.getElementById('resultDateSelect'), selected=ds?.value||'', soon=document.getElementById('resultComingSoon'), list=document.getElementById('resultList');
-            const dates=[...new Set((c.resultsList||[]).filter(r=>r.slot===t&&(r.lobby||'L1')===l&&r.date).map(r=>r.date))].sort().reverse(); 
+            const t=document.getElementById('resultTimeSelect')?.value||'', l=document.getElementById('resultLobbySelect')?.value||'L1', ds=document.getElementById('resultDateSelect'), selected=ds?.value||'', soon=document.getElementById('resultComingSoon'), list=document.getElementById('resultList');
+            // Prefer live Firebase results (rsViewerResults); fall back to the
+            // per-device localStorage copy only if that's empty.
+            let dates=[...new Set((rsViewerResults||[]).filter(r=>r.slot===t&&(r.lobby||'L1')===l&&r.date).map(r=>r.date))].sort().reverse();
+            if(!dates.length){
+                const c=getAppConfig();
+                dates=[...new Set((c.resultsList||[]).filter(r=>r.slot===t&&(r.lobby||'L1')===l&&r.date).map(r=>r.date))].sort().reverse();
+            }
             if(ds&&dates.length&&!dates.includes(selected))ds.value=dates[0];
             const active=ds?.value||''; 
             currentResultSlides=(rsViewerResults||[]).filter(r=>r.slot===t&&(r.lobby||'L1')===l&&(!active || r.date===active)); 
@@ -2421,11 +2435,26 @@
             const selectedTime = document.getElementById('resultTimeSelect')?.value || '';
             const selectedDate = document.getElementById('resultDateSelect')?.value || '';
             const selectedLobby = document.getElementById('resultLobbySelect')?.value || 'L1';
-            const config = getAppConfig();
 
-            const hasResult = (config.resultsList || []).some(
+            // IMPORTANT: check the LIVE result data that was already fetched from
+            // Firebase for the unlocked secret code (rsViewerResults), NOT
+            // getAppConfig().resultsList. That local-storage copy is per-device
+            // and is only ever refreshed for logged-in admins, so on a fresh
+            // browser it stays empty forever and "WAIT FOR RESULT" would show
+            // even though the result table was already visible on screen.
+            let hasResult = (rsViewerResults || []).some(
                 r => r.slot === selectedTime && (r.lobby || 'L1') === selectedLobby && r.date === selectedDate
             );
+
+            // Fallback: also accept the local config copy in case it happens to
+            // be populated (e.g. on an admin device), so behaviour never gets
+            // stricter than before.
+            if (!hasResult) {
+                const config = getAppConfig();
+                hasResult = (config.resultsList || []).some(
+                    r => r.slot === selectedTime && (r.lobby || 'L1') === selectedLobby && r.date === selectedDate
+                );
+            }
 
             if (!hasResult) {
                 openWaitForResultPopup();
@@ -2481,14 +2510,27 @@
         }
 
         function updatePrizeClaimDates() {
-            const config = getAppConfig();
             const time = document.getElementById('prizeClaimTime').value;
             const dateSelect = document.getElementById('prizeClaimDate');
             if(!dateSelect) return;
 
-            const dates = [...new Set((config.resultsList || [])
+            // Use the LIVE result data already fetched from Firebase for the
+            // unlocked secret code (rsViewerResults), not getAppConfig().resultsList,
+            // which is a per-device localStorage copy that never syncs for
+            // regular viewers and caused "No result date available" here too.
+            let dates = [...new Set((rsViewerResults || [])
                 .filter(r => r.slot === time && r.date)
                 .map(r => r.date))].sort().reverse();
+
+            // Fallback to the local config copy in case it happens to be
+            // populated (e.g. on an admin device), so behaviour never gets
+            // stricter than before.
+            if (!dates.length) {
+                const config = getAppConfig();
+                dates = [...new Set((config.resultsList || [])
+                    .filter(r => r.slot === time && r.date)
+                    .map(r => r.date))].sort().reverse();
+            }
 
             dateSelect.innerHTML = dates.length
                 ? dates.map(d => `<option value="${d}">${d}</option>`).join('')
