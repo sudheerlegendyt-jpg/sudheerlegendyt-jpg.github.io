@@ -277,15 +277,20 @@
 
     <!-- MATCH RESULTS QUICK ACCESS -->
     <div class="max-w-7xl mx-auto w-full px-4 pt-5">
-        <div class="flex flex-nowrap items-center justify-center gap-1 sm:gap-2">
-            <button onclick="openResultModal()" class="bg-gradient-to-r from-amber-500/20 to-esports-purple border border-esports-yellow text-esports-yellow px-3 sm:px-4 py-1 sm:py-1.5 rounded-lg font-teko text-[15px] sm:text-lg tracking-wide leading-tight whitespace-nowrap font-bold flex items-center justify-center gap-1 sm:gap-2 transition-all hover:scale-105 shadow-lg">
-                <i class="fa-solid fa-trophy text-[10px] sm:text-sm"></i>
-                VIEW POINT TABLE
-                <i class="fa-solid fa-chevron-right text-[8px] sm:text-[10px]"></i>
-            </button>
-            <button type="button" onclick="openSlotListModal()" class="bg-gradient-to-r from-sky-600 to-esports-lightPurple border border-esports-yellow text-white px-3 sm:px-4 py-1 sm:py-1.5 rounded-lg font-teko text-[15px] sm:text-lg tracking-wide leading-tight whitespace-nowrap font-bold flex items-center justify-center gap-1 sm:gap-2 transition-all hover:scale-105 shadow-lg">
-                <i class="fa-solid fa-list-check text-[10px] sm:text-sm text-esports-yellow"></i>
+        <div class="flex flex-col items-stretch gap-3">
+            <button type="button" onclick="openSlotListModal()" class="w-full bg-gradient-to-r from-sky-600 to-esports-lightPurple border-2 border-esports-yellow text-white px-4 py-3 rounded-xl font-teko text-2xl sm:text-3xl tracking-wide leading-tight font-bold flex items-center justify-center gap-2 transition-all hover:scale-[1.02] shadow-lg">
+                <i class="fa-solid fa-list-check text-esports-yellow"></i>
                 GET IDP / SLOT LIST
+            </button>
+            <button onclick="openResultModal()" class="w-full bg-gradient-to-r from-amber-500/20 to-esports-purple border-2 border-esports-yellow text-esports-yellow px-4 py-3 rounded-xl font-teko text-2xl sm:text-3xl tracking-wide leading-tight font-bold flex items-center justify-center gap-2 transition-all hover:scale-[1.02] shadow-lg">
+                <i class="fa-solid fa-trophy"></i>
+                VIEW POINT TABLE
+                <i class="fa-solid fa-chevron-right text-base"></i>
+            </button>
+            <button type="button" id="togglePrizePoolBtn" onclick="togglePrizePools()" class="w-full bg-gradient-to-r from-esports-purple to-esports-lightPurple border-2 border-esports-yellow text-esports-yellow px-4 py-3 rounded-xl font-teko text-2xl sm:text-3xl tracking-wide leading-tight font-bold flex items-center justify-center gap-2 transition-all hover:scale-[1.02] shadow-lg">
+                <i class="fa-solid fa-coins"></i>
+                <span id="togglePrizePoolLabel">VIEW PRIZE POOL</span>
+                <i id="togglePrizePoolIcon" class="fa-solid fa-chevron-down text-base"></i>
             </button>
         </div>
     </div>
@@ -299,6 +304,20 @@
             <button type="button" onclick="closeContactUsChooser()" class="mt-4 w-full bg-gray-700 hover:bg-gray-600 text-white font-teko text-xl font-bold py-2 rounded-xl">CLOSE</button>
         </div>
     </div>
+
+    <!-- MAIN PRIZE POOL CARDS GRID -->
+    <main id="prizePoolSection" class="hidden max-w-7xl mx-auto w-full px-4 pt-8 pb-2">
+        <div class="text-center mb-8">
+            <h2 class="font-teko text-4xl font-bold text-white tracking-wide">
+                SELECT YOUR <span class="text-esports-yellow">PRIZE POOL SLOTS</span>
+            </h2>
+            <p class="text-gray-300 text-sm font-rajdhani">Select a pool tier below to register your Squad</p>
+        </div>
+
+        <div id="prizePoolsGrid" class="grid grid-cols-2 gap-3 md:gap-4">
+            <!-- Dynamic Prize Pool Cards Render Here -->
+        </div>
+    </main>
 
     <!-- FULL DAY SLOT AVAILABLE BANNER -->
     <div class="max-w-7xl mx-auto w-full px-4 pt-6">
@@ -330,19 +349,6 @@
         </div>
     </div>
 
-    <!-- MAIN PRIZE POOL CARDS GRID -->
-    <main class="max-w-7xl mx-auto w-full px-4 py-8 flex-grow">
-        <div class="text-center mb-8">
-            <h2 class="font-teko text-4xl font-bold text-white tracking-wide">
-                SELECT YOUR <span class="text-esports-yellow">PRIZE POOL SLOTS</span>
-            </h2>
-            <p class="text-gray-300 text-sm font-rajdhani">Select a pool tier below to register your Squad</p>
-        </div>
-
-        <div id="prizePoolsGrid" class="grid grid-cols-2 gap-3 md:gap-4">
-            <!-- Dynamic Prize Pool Cards Render Here -->
-        </div>
-    </main>
 
     <!-- FOOTER -->
     <footer class="bg-esports-darkPurple border-t border-esports-lightPurple mt-12 py-8">
@@ -1593,6 +1599,17 @@
                     <span class="shrink-0 ${active ? 'bg-emerald-500/20 border border-emerald-400/70 text-emerald-300' : 'bg-red-500/20 border border-red-400/70 text-red-300'} text-[9px] md:text-[10px] font-rajdhani font-bold px-2 py-0.5 rounded-md">${active ? esc(String(available)) + ' SLOTS LEFT' : 'SLOT FULL'}</span>
                 </div>`;
             }).join('');
+        }
+
+        function togglePrizePools() {
+            const sec = document.getElementById('prizePoolSection');
+            const label = document.getElementById('togglePrizePoolLabel');
+            const icon = document.getElementById('togglePrizePoolIcon');
+            const show = sec.classList.contains('hidden');
+            sec.classList.toggle('hidden', !show);
+            label.textContent = show ? 'HIDE PRIZE POOL' : 'VIEW PRIZE POOL';
+            icon.className = 'fa-solid ' + (show ? 'fa-chevron-up' : 'fa-chevron-down') + ' text-base';
+            if (show) sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
         function renderPools() {
