@@ -132,6 +132,10 @@
             100% { transform: translateX(-100%); }
         }
     </style>
+<style>
+@keyframes rskHandNudge { 0%,100% { transform: translate(0,-50%); } 50% { transform: translate(8px,-50%); } }
+.rsk-hand { animation: rskHandNudge 0.9s ease-in-out infinite; }
+</style>
 </head>
 <body class="bg-grid min-h-screen flex flex-col justify-between selection:bg-esports-yellow selection:text-black">
 
@@ -278,24 +282,31 @@
     <!-- MATCH RESULTS QUICK ACCESS -->
     <div class="max-w-7xl mx-auto w-full px-4 pt-5">
         <div class="flex flex-col items-stretch gap-3">
-            <button type="button" onclick="openSlotListModal()" class="relative w-full min-h-[64px] pl-16 pr-12 py-3 rounded-xl border border-white/20 font-teko text-2xl sm:text-3xl tracking-wide leading-tight font-bold flex flex-col items-center justify-center text-center shadow-lg shadow-black/40 transition-all duration-200 hover:brightness-110 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] bg-gradient-to-r from-amber-400 to-yellow-500 text-black">
-                <span class="absolute left-4 top-1/2 -translate-y-1/2 w-9 h-9 rounded-lg bg-black/25 flex items-center justify-center text-lg"><i class="fa-solid fa-key"></i></span>
-                <span class="whitespace-nowrap">GET ROOM ID PASS</span>
+            <div class="relative">
+            <button type="button" onclick="openSlotListModal()" class="relative w-full min-h-[64px] pl-12 pr-10 py-3 rounded-xl border border-white/20 font-teko text-[19px] sm:text-3xl tracking-wide leading-tight font-bold flex flex-col items-center justify-center text-center shadow-lg shadow-black/40 transition-all duration-200 hover:brightness-110 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] bg-gradient-to-r from-amber-400 to-yellow-500 text-black">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg bg-black/25 flex items-center justify-center text-base"><i class="fa-solid fa-key"></i></span>
+                <span class="relative whitespace-nowrap">
+                    <i class="rsk-hand pointer-events-none absolute right-full mr-1.5 top-1/2 -translate-y-1/2 fa-solid fa-hand-point-right text-red-600 text-base drop-shadow"></i>
+                    GET ROOM ID PASS
+                    <span class="block text-[13px] sm:text-base tracking-wide leading-none mt-0.5 font-rajdhani">अपना ROOM ID PASS देखें</span>
+                </span>
+                <i class="absolute right-4 top-1/2 -translate-y-1/2 fa-solid fa-chevron-right text-base opacity-80"></i>
                 <span class="mt-1 bg-black/80 text-amber-300 text-base sm:text-lg tracking-widest leading-none px-3 py-1 rounded-md">SLOT LIST</span>
             </button>
-            <button onclick="openResultModal()" class="relative w-full min-h-[64px] pl-16 pr-12 py-3 rounded-xl border border-white/20 font-teko text-2xl sm:text-3xl tracking-wide leading-tight font-bold flex flex-col items-center justify-center text-center shadow-lg shadow-black/40 transition-all duration-200 hover:brightness-110 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] bg-gradient-to-r from-sky-500 to-blue-700 text-white">
-                <span class="absolute left-4 top-1/2 -translate-y-1/2 w-9 h-9 rounded-lg bg-black/25 flex items-center justify-center text-lg"><i class="fa-solid fa-trophy text-yellow-300"></i></span>
-                <span class="whitespace-nowrap">VIEW POINT TABLE</span>
+            </div>
+            <button onclick="openResultModal()" class="relative w-full min-h-[64px] pl-12 pr-10 py-3 rounded-xl border border-white/20 font-teko text-[19px] sm:text-3xl tracking-wide leading-tight font-bold flex flex-col items-center justify-center text-center shadow-lg shadow-black/40 transition-all duration-200 hover:brightness-110 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] bg-gradient-to-r from-sky-500 to-blue-700 text-white">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg bg-black/25 flex items-center justify-center text-base"><i class="fa-solid fa-trophy text-yellow-300"></i></span>
+                <span class="relative whitespace-nowrap"><i class="rsk-hand pointer-events-none absolute right-full mr-1.5 top-1/2 -translate-y-1/2 fa-solid fa-hand-point-right text-red-600 text-base drop-shadow"></i>VIEW POINT TABLE<span class="block text-[13px] sm:text-base tracking-wide leading-none mt-0.5 font-rajdhani">अपना POINT TABLE देखें</span></span>
                 <i class="absolute right-4 top-1/2 -translate-y-1/2 fa-solid fa-chevron-right text-base opacity-80"></i>
             </button>
-            <button type="button" id="togglePrizePoolBtn" onclick="togglePrizePools()" class="relative w-full min-h-[64px] pl-16 pr-12 py-3 rounded-xl border border-white/20 font-teko text-2xl sm:text-3xl tracking-wide leading-tight font-bold flex flex-col items-center justify-center text-center shadow-lg shadow-black/40 transition-all duration-200 hover:brightness-110 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] bg-gradient-to-r from-violet-500 to-purple-700 text-white">
-                <span class="absolute left-4 top-1/2 -translate-y-1/2 w-9 h-9 rounded-lg bg-black/25 flex items-center justify-center text-lg"><i class="fa-solid fa-coins text-yellow-300"></i></span>
-                <span id="togglePrizePoolLabel" class="whitespace-nowrap">VIEW PRIZE POOL</span>
+            <button type="button" id="togglePrizePoolBtn" onclick="togglePrizePools()" class="relative w-full min-h-[64px] pl-12 pr-10 py-3 rounded-xl border border-white/20 font-teko text-[19px] sm:text-3xl tracking-wide leading-tight font-bold flex flex-col items-center justify-center text-center shadow-lg shadow-black/40 transition-all duration-200 hover:brightness-110 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] bg-gradient-to-r from-violet-500 to-purple-700 text-white">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg bg-black/25 flex items-center justify-center text-base"><i class="fa-solid fa-coins text-yellow-300"></i></span>
+                <span id="togglePrizePoolLabel" class="relative whitespace-nowrap"><i class="rsk-hand pointer-events-none absolute right-full mr-1.5 top-1/2 -translate-y-1/2 fa-solid fa-hand-point-right text-red-600 text-base drop-shadow"></i>VIEW PRIZE POOL<span class="block text-[13px] sm:text-base tracking-wide leading-none mt-0.5 font-rajdhani">अपना PRIZE POOL देखें</span></span>
                 <i id="togglePrizePoolIcon" class="absolute right-4 top-1/2 -translate-y-1/2 fa-solid fa-chevron-right text-base opacity-80"></i>
             </button>
-            <button type="button" onclick="openFullDay()" class="relative w-full min-h-[64px] pl-16 pr-12 py-3 rounded-xl border border-white/20 font-teko text-2xl sm:text-3xl tracking-wide leading-tight font-bold flex flex-col items-center justify-center text-center shadow-lg shadow-black/40 transition-all duration-200 hover:brightness-110 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] bg-gradient-to-r from-emerald-500 to-teal-700 text-white">
-                <span class="absolute left-4 top-1/2 -translate-y-1/2 w-9 h-9 rounded-lg bg-black/25 flex items-center justify-center text-lg"><i class="fa-solid fa-clock text-yellow-300"></i></span>
-                <span class="whitespace-nowrap">VIEW FULL DAY SLOT TIME</span>
+            <button type="button" onclick="openFullDay()" class="relative w-full min-h-[64px] pl-12 pr-10 py-3 rounded-xl border border-white/20 font-teko text-[19px] sm:text-3xl tracking-wide leading-tight font-bold flex flex-col items-center justify-center text-center shadow-lg shadow-black/40 transition-all duration-200 hover:brightness-110 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] bg-gradient-to-r from-emerald-500 to-teal-700 text-white">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg bg-black/25 flex items-center justify-center text-base"><i class="fa-solid fa-clock text-yellow-300"></i></span>
+                <span class="relative whitespace-nowrap"><i class="rsk-hand pointer-events-none absolute right-full mr-1.5 top-1/2 -translate-y-1/2 fa-solid fa-hand-point-right text-red-600 text-base drop-shadow"></i>VIEW FULL DAY SLOT TIME<span class="block text-[13px] sm:text-base tracking-wide leading-none mt-0.5 font-rajdhani">अपना FULL DAY SLOT TIME देखें</span></span>
                 <i class="absolute right-4 top-1/2 -translate-y-1/2 fa-solid fa-chevron-right text-base opacity-80"></i>
             </button>
         </div>
