@@ -278,22 +278,27 @@
     <!-- MATCH RESULTS QUICK ACCESS -->
     <div class="max-w-7xl mx-auto w-full px-4 pt-5">
         <div class="flex flex-col items-stretch gap-3">
-            <button type="button" onclick="openSlotListModal()" class="w-full bg-gradient-to-r from-sky-600 to-esports-lightPurple border-2 border-esports-yellow text-white px-4 py-3 rounded-xl font-teko text-2xl sm:text-3xl tracking-wide leading-tight font-bold flex items-center justify-center gap-2 transition-all hover:scale-[1.02] shadow-lg">
-                <i class="fa-solid fa-list-check text-esports-yellow"></i>
+            <button type="button" onclick="openSlotListModal()" class="w-full px-4 py-3 rounded-xl border border-white/20 font-teko text-2xl sm:text-3xl tracking-wide leading-tight font-bold flex items-center justify-center gap-3 shadow-lg shadow-black/40 transition-all duration-200 hover:brightness-110 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] bg-gradient-to-r from-amber-400 to-yellow-500 text-black">
+                <span class="w-9 h-9 rounded-lg bg-black/25 flex items-center justify-center text-lg shrink-0"><i class="fa-solid fa-key"></i></span>
                 <span class="flex flex-col items-center leading-none">
                     <span>GET ROOM ID PASS</span>
-                    <span class="text-sm sm:text-base font-rajdhani font-bold text-amber-300 tracking-widest mt-1">SLOT LIST</span>
+                    <span class="text-sm sm:text-base font-rajdhani font-bold text-black/70 tracking-widest mt-1">SLOT LIST</span>
                 </span>
             </button>
-            <button onclick="openResultModal()" class="w-full bg-gradient-to-r from-amber-500/20 to-esports-purple border-2 border-esports-yellow text-esports-yellow px-4 py-3 rounded-xl font-teko text-2xl sm:text-3xl tracking-wide leading-tight font-bold flex items-center justify-center gap-2 transition-all hover:scale-[1.02] shadow-lg">
-                <i class="fa-solid fa-trophy"></i>
+            <button onclick="openResultModal()" class="w-full px-4 py-3 rounded-xl border border-white/20 font-teko text-2xl sm:text-3xl tracking-wide leading-tight font-bold flex items-center justify-center gap-3 shadow-lg shadow-black/40 transition-all duration-200 hover:brightness-110 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] bg-gradient-to-r from-sky-500 to-blue-700 text-white">
+                <span class="w-9 h-9 rounded-lg bg-black/25 flex items-center justify-center text-lg shrink-0"><i class="fa-solid fa-trophy text-yellow-300"></i></span>
                 VIEW POINT TABLE
-                <i class="fa-solid fa-chevron-right text-base"></i>
+                <i class="fa-solid fa-chevron-right text-base opacity-80"></i>
             </button>
-            <button type="button" id="togglePrizePoolBtn" onclick="togglePrizePools()" class="w-full bg-gradient-to-r from-esports-purple to-esports-lightPurple border-2 border-esports-yellow text-esports-yellow px-4 py-3 rounded-xl font-teko text-2xl sm:text-3xl tracking-wide leading-tight font-bold flex items-center justify-center gap-2 transition-all hover:scale-[1.02] shadow-lg">
-                <i class="fa-solid fa-coins"></i>
+            <button type="button" id="togglePrizePoolBtn" onclick="togglePrizePools()" class="w-full px-4 py-3 rounded-xl border border-white/20 font-teko text-2xl sm:text-3xl tracking-wide leading-tight font-bold flex items-center justify-center gap-3 shadow-lg shadow-black/40 transition-all duration-200 hover:brightness-110 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] bg-gradient-to-r from-violet-500 to-purple-700 text-white">
+                <span class="w-9 h-9 rounded-lg bg-black/25 flex items-center justify-center text-lg shrink-0"><i class="fa-solid fa-coins text-yellow-300"></i></span>
                 <span id="togglePrizePoolLabel">VIEW PRIZE POOL</span>
-                <i id="togglePrizePoolIcon" class="fa-solid fa-chevron-right text-base"></i>
+                <i id="togglePrizePoolIcon" class="fa-solid fa-chevron-right text-base opacity-80"></i>
+            </button>
+            <button type="button" onclick="openFullDay()" class="w-full px-4 py-3 rounded-xl border border-white/20 font-teko text-2xl sm:text-3xl tracking-wide leading-tight font-bold flex items-center justify-center gap-3 shadow-lg shadow-black/40 transition-all duration-200 hover:brightness-110 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] bg-gradient-to-r from-emerald-500 to-teal-700 text-white">
+                <span class="w-9 h-9 rounded-lg bg-black/25 flex items-center justify-center text-lg shrink-0"><i class="fa-solid fa-clock text-yellow-300"></i></span>
+                VIEW FULL DAY SLOT TIME
+                <i class="fa-solid fa-chevron-right text-base opacity-80"></i>
             </button>
         </div>
     </div>
@@ -328,10 +333,13 @@
     </main>
 
     <!-- FULL DAY SLOT AVAILABLE BANNER -->
-    <div class="max-w-7xl mx-auto w-full px-4 pt-6">
-        <div class="bg-gradient-to-r from-amber-500/20 via-esports-cardBg to-amber-500/20 border-2 border-esports-yellow rounded-2xl p-5 shadow-2xl relative overflow-hidden">
+    <div id="fullDaySection" class="hidden fixed inset-0 z-40 bg-black/80 backdrop-blur-md items-start justify-center overflow-y-auto p-3" onclick="closeFullDay()">
+        <div class="bg-gradient-to-r from-amber-500/20 via-esports-cardBg to-amber-500/20 border-2 border-esports-yellow rounded-2xl p-5 shadow-2xl relative overflow-hidden bg-esports-darkPurple w-full max-w-3xl my-4" onclick="event.stopPropagation()">
+            <button type="button" onclick="closeFullDay()" class="absolute top-3 right-3 text-gray-300 hover:text-white text-2xl leading-none z-10">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
             <div class="flex items-center justify-between border-b border-esports-yellow/40 pb-3 mb-3">
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2 pr-8">
                     <i class="fa-solid fa-circle-check text-emerald-400 text-2xl"></i>
                     <h2 id="fullDayTitleDisplay" class="font-teko text-3xl md:text-4xl font-extrabold text-esports-yellow tracking-wider leading-none">
                         FULL DAY SLOT AVAILABLE ✅
@@ -1618,6 +1626,20 @@
 
         function closePrizePools() {
             const sec = document.getElementById('prizePoolSection');
+            sec.classList.add('hidden');
+            sec.classList.remove('flex');
+            document.body.style.overflow = '';
+        }
+
+        function openFullDay() {
+            const sec = document.getElementById('fullDaySection');
+            sec.classList.remove('hidden');
+            sec.classList.add('flex');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeFullDay() {
+            const sec = document.getElementById('fullDaySection');
             sec.classList.add('hidden');
             sec.classList.remove('flex');
             document.body.style.overflow = '';
