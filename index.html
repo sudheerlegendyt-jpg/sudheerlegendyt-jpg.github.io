@@ -280,7 +280,10 @@
         <div class="flex flex-col items-stretch gap-3">
             <button type="button" onclick="openSlotListModal()" class="w-full bg-gradient-to-r from-sky-600 to-esports-lightPurple border-2 border-esports-yellow text-white px-4 py-3 rounded-xl font-teko text-2xl sm:text-3xl tracking-wide leading-tight font-bold flex items-center justify-center gap-2 transition-all hover:scale-[1.02] shadow-lg">
                 <i class="fa-solid fa-list-check text-esports-yellow"></i>
-                GET IDP / SLOT LIST
+                <span class="flex flex-col items-center leading-none">
+                    <span>GET ROOM ID PASS</span>
+                    <span class="text-sm sm:text-base font-rajdhani font-bold text-amber-300 tracking-widest mt-1">SLOT LIST</span>
+                </span>
             </button>
             <button onclick="openResultModal()" class="w-full bg-gradient-to-r from-amber-500/20 to-esports-purple border-2 border-esports-yellow text-esports-yellow px-4 py-3 rounded-xl font-teko text-2xl sm:text-3xl tracking-wide leading-tight font-bold flex items-center justify-center gap-2 transition-all hover:scale-[1.02] shadow-lg">
                 <i class="fa-solid fa-trophy"></i>
@@ -290,7 +293,7 @@
             <button type="button" id="togglePrizePoolBtn" onclick="togglePrizePools()" class="w-full bg-gradient-to-r from-esports-purple to-esports-lightPurple border-2 border-esports-yellow text-esports-yellow px-4 py-3 rounded-xl font-teko text-2xl sm:text-3xl tracking-wide leading-tight font-bold flex items-center justify-center gap-2 transition-all hover:scale-[1.02] shadow-lg">
                 <i class="fa-solid fa-coins"></i>
                 <span id="togglePrizePoolLabel">VIEW PRIZE POOL</span>
-                <i id="togglePrizePoolIcon" class="fa-solid fa-chevron-down text-base"></i>
+                <i id="togglePrizePoolIcon" class="fa-solid fa-chevron-right text-base"></i>
             </button>
         </div>
     </div>
@@ -306,8 +309,12 @@
     </div>
 
     <!-- MAIN PRIZE POOL CARDS GRID -->
-    <main id="prizePoolSection" class="hidden max-w-7xl mx-auto w-full px-4 pt-8 pb-2">
-        <div class="text-center mb-8">
+    <main id="prizePoolSection" class="hidden fixed inset-0 z-40 bg-black/80 backdrop-blur-md items-start justify-center overflow-y-auto p-3" onclick="closePrizePools()">
+      <div class="bg-esports-darkPurple border-2 border-esports-yellow rounded-2xl w-full max-w-3xl p-4 md:p-5 shadow-2xl relative my-4" onclick="event.stopPropagation()">
+        <button type="button" onclick="closePrizePools()" class="absolute top-3 right-3 text-gray-300 hover:text-white text-2xl leading-none">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+        <div class="text-center mb-6 pr-6">
             <h2 class="font-teko text-4xl font-bold text-white tracking-wide">
                 SELECT YOUR <span class="text-esports-yellow">PRIZE POOL SLOTS</span>
             </h2>
@@ -317,6 +324,7 @@
         <div id="prizePoolsGrid" class="grid grid-cols-2 gap-3 md:gap-4">
             <!-- Dynamic Prize Pool Cards Render Here -->
         </div>
+      </div>
     </main>
 
     <!-- FULL DAY SLOT AVAILABLE BANNER -->
@@ -1603,13 +1611,16 @@
 
         function togglePrizePools() {
             const sec = document.getElementById('prizePoolSection');
-            const label = document.getElementById('togglePrizePoolLabel');
-            const icon = document.getElementById('togglePrizePoolIcon');
-            const show = sec.classList.contains('hidden');
-            sec.classList.toggle('hidden', !show);
-            label.textContent = show ? 'HIDE PRIZE POOL' : 'VIEW PRIZE POOL';
-            icon.className = 'fa-solid ' + (show ? 'fa-chevron-up' : 'fa-chevron-down') + ' text-base';
-            if (show) sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            sec.classList.remove('hidden');
+            sec.classList.add('flex');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closePrizePools() {
+            const sec = document.getElementById('prizePoolSection');
+            sec.classList.add('hidden');
+            sec.classList.remove('flex');
+            document.body.style.overflow = '';
         }
 
         function renderPools() {
