@@ -716,6 +716,13 @@
         </div>
     </div>
 
+    <!-- GROUPS VIEWER OVERLAY -->
+    <div id="viewerGroupOverlay" class="hidden fixed inset-0 z-[100] bg-black/90 backdrop-blur-md items-center justify-center p-2">
+        <div id="viewerGroupContent"
+             class="bg-esports-darkPurple border-2 border-esports-yellow rounded-xl w-full max-w-lg shadow-2xl overflow-hidden"
+             style="max-height:calc(100vh - 16px)"></div>
+    </div>
+
     <!-- Firebase Realtime Database (used for .PC match results synchronization) -->
     <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
@@ -739,6 +746,7 @@
         let rskFirebaseDb = null;
         let rskFirebaseReady = false;
         const RSK_RESULTS_PATH = 'rsk_esports_results';
+        const RSK_GROUPS_PATH = 'rsk_esports_groups';
         const RSK_NOTICE_PATH = 'rsk_esports_notice';
         const RSK_TOP_BANNER_PATH = 'rsk_esports_top_banner';
         const RSK_RESULT_CODES_PATH = 'rsk_esports_result_codes';
@@ -1910,6 +1918,13 @@
             const data = normalizeSlotRuleContent(slRuleContent);
             slRuleContent = data;
             if (typeof renderSlotGroupView === 'function' && slViewerRoom) renderSlotGroupView();
+            // Group viewer ka rule bhi realtime update karo (agar group overlay khula hai)
+            if (typeof viewerGroupData !== 'undefined' && viewerGroupData && typeof viewerGroupShowRule === 'function') {
+                const content = document.getElementById('viewerGroupContent');
+                if (content && content.innerHTML.includes('TOURNAMENT RULES')) {
+                    viewerGroupShowRule();
+                }
+            }
         }
 
         function openSlotRuleLink() {
@@ -1930,8 +1945,8 @@
             document.getElementById('slotRuleTextModal')?.classList.add('hidden');
         }
 
-        function slGroupKey(slot, lobby) {
-            return String(slot).replace(/[^A-Za-z0-9]+/g, '_') + '__' + String(lobby).replace(/[^A-Za-z0-9]+/g, '_');
+        function slGroupKey(slot, lobby, date) {
+            return String(slot).replace(/[^A-Za-z0-9]+/g, '_') + '__' + String(lobby).replace(/[^A-Za-z0-9]+/g, '_') + '__' + String(date || '').replace(/[^A-Za-z0-9]+/g, '_');
         }
         function slNormCode(v) { return String(v || '').trim().toUpperCase(); }
         function slValidCode(c) { return /^[A-Z0-9_-]{3,30}$/.test(c); }
@@ -2054,7 +2069,7 @@
                 }
                 previousRoomNotificationState = roomNotificationState;
                 slViewerRoom = r;
-                const gk = slGroupKey(r.slot, r.lobby);
+                const gk = slGroupKey(r.slot, r.lobby, r.date);
                 if (gk !== slViewerListKey) {
                     if (slViewerListRef) slViewerListRef.off();
                     slViewerListKey = gk; slViewerLists = null;
@@ -2168,8 +2183,401 @@
                 </div>`;
         }
 
+
+        /* ================================================================
+           GROUPS VIEWER SYSTEM
+           URL: ?group=JOIN_CODE
+           ================================================================ */
+        let viewerGroupCode = '';
+        let viewerGroupData = null;
+        let viewerGroupRef = null;
+        let viewerGroupSlotListRef = null;
+        let viewerGroupResultsRef = null;
+        let viewerGroupRoomRef = null;
+        let viewerGroupSlotListKey = '';
+        let viewerGroupSlotListData = null;
+        let viewerGroupRoomData = null;
+        let viewerGroupResultsData = {};
+        let viewerGroupDeletedHandled = false;
+
+        function viewerGroupSavedKey(code) {
+            return 'rsk_saved_point_table_' + slNormCode(code);
+        }
+
+        function viewerGroupFormatDate(date) {
+            return String(date || '').trim();
+        }
+
+        function viewerGroupDetachListeners() {
+            try { if (viewerGroupRef) viewerGroupRef.off(); } catch (_) {}
+            try { if (viewerGroupSlotListRef) viewerGroupSlotListRef.off(); } catch (_) {}
+            try { if (viewerGroupResultsRef) viewerGroupResultsRef.off(); } catch (_) {}
+            try { if (viewerGroupRoomRef) viewerGroupRoomRef.off(); } catch (_) {}
+            viewerGroupRef = null;
+            viewerGroupSlotListRef = null;
+            viewerGroupResultsRef = null;
+            viewerGroupRoomRef = null;
+            viewerGroupSlotListKey = '';
+        }
+
+        function viewerGroupOpenOverlay() {
+            const overlay = document.getElementById('viewerGroupOverlay');
+            if (!overlay) return;
+            overlay.classList.remove('hidden');
+            overlay.classList.add('flex');
+        }
+
+        function viewerGroupClose() {
+            try { window.close(); } catch (_) {}
+        }
+
+        function viewerGroupHeaderHtml(g, saved) {
+            const name = String(g?.name || generateViewerGroupName(g) || 'GROUP');
+            const lobby = String(g?.lobby || '');
+            const slot = String(g?.slot || '');
+            const date = viewerGroupFormatDate(g?.date);
+            return `
+                <div class="flex items-start justify-between gap-3 px-4 py-3 border-b border-esports-lightPurple/50">
+                    <div class="min-w-0">
+                        <h2 class="font-teko text-3xl font-bold text-esports-yellow leading-none truncate">
+                            🏆 ${esc(name)}${saved ? ' <span class="text-amber-300 text-xl">(SAVED)</span>' : ''}
+                        </h2>
+                        <p class="text-xs text-gray-300 font-rajdhani font-bold mt-1">
+                            ${esc(lobby)} • ${esc(slot)}${date ? ' • ' + esc(date) : ''}
+                        </p>
+                    </div>
+                    <button type="button" onclick="viewerGroupClose()" class="shrink-0 bg-black/50 border border-gray-600 text-gray-300 hover:text-white px-3 py-1.5 rounded-lg font-teko text-lg font-bold">
+                        <i class="fa-solid fa-xmark mr-1"></i>CLOSE
+                    </button>
+                </div>`;
+        }
+
+        function generateViewerGroupName(g) {
+            const lobby = String(g?.lobby || '');
+            const slotStart = String(g?.slot || '').split('-')[0].trim();
+            const day = String(g?.date || '').slice(8, 10) || String(g?.date || '').slice(0, 2);
+            return lobby && slotStart ? `${lobby}-${slotStart}-${day}` : '';
+        }
+
+        function viewerGroupMatchHtml(n, m) {
+            m = m || {};
+            const idp = String(m.idpTime || '').trim();
+            const start = String(m.startTime || '').trim();
+            const roomId = String(m.roomId || '').trim();
+            const pass = String(m.roomPass || '').trim();
+            return `
+                <div class="bg-black/60 border border-esports-lightPurple rounded-xl p-3">
+                    <p class="font-teko text-2xl font-bold text-esports-yellow leading-none mb-2">MATCH ${n}</p>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div class="bg-esports-purple/30 border border-esports-lightPurple/50 rounded-lg px-2 py-1.5">
+                            <p class="text-[9px] text-gray-400 font-rajdhani font-bold">IDP</p>
+                            <p class="text-sm font-mono font-bold text-amber-300">${idp ? esc(idp) : 'COMING SOON...'}</p>
+                        </div>
+                        <div class="bg-esports-purple/30 border border-esports-lightPurple/50 rounded-lg px-2 py-1.5">
+                            <p class="text-[9px] text-gray-400 font-rajdhani font-bold">START</p>
+                            <p class="text-sm font-mono font-bold text-amber-300">${start ? esc(start) : 'COMING SOON...'}</p>
+                        </div>
+                        <div class="bg-esports-purple/30 border border-esports-lightPurple/50 rounded-lg px-2 py-1.5">
+                            <p class="text-[9px] text-gray-400 font-rajdhani font-bold">ROOM ID</p>
+                            <p class="text-sm font-mono font-bold text-amber-300 break-all">${roomId ? esc(roomId) : 'COMING SOON...'}</p>
+                        </div>
+                        <div class="bg-esports-purple/30 border border-esports-lightPurple/50 rounded-lg px-2 py-1.5">
+                            <p class="text-[9px] text-gray-400 font-rajdhani font-bold">PASS</p>
+                            <p class="text-sm font-mono font-bold text-amber-300 break-all">${pass ? esc(pass) : 'COMING SOON...'}</p>
+                        </div>
+                    </div>
+                </div>`;
+        }
+
+        function viewerGroupGetMatches(room) {
+            const m = (room && room.matches) || {};
+            const out = [];
+            for (let n = 1; n <= 3; n++) {
+                const x = m['m' + n];
+                if (x) out.push({
+                    roomId: String(x.roomId || ''),
+                    roomPass: String(x.roomPass || ''),
+                    idpTime: String(x.idpTime || ''),
+                    startTime: String(x.startTime || '')
+                });
+                else if (n === 1 && room) out.push({
+                    roomId: String(room.roomId || ''),
+                    roomPass: String(room.roomPass || ''),
+                    idpTime: '',
+                    startTime: ''
+                });
+                else out.push({ roomId: '', roomPass: '', idpTime: '', startTime: '' });
+            }
+            return out;
+        }
+
+        function viewerGroupRenderMain() {
+            const content = document.getElementById('viewerGroupContent');
+            if (!content || !viewerGroupData) return;
+            const g = viewerGroupData;
+            const matches = viewerGroupGetMatches(viewerGroupRoomData);
+            content.innerHTML = `
+                ${viewerGroupHeaderHtml(g, false)}
+                ${viewerGroupTabsHtml()}
+                <div class="p-3 space-y-2.5 overflow-y-auto" style="max-height:calc(100vh - 150px)">
+                    ${matches.map((m, i) => viewerGroupMatchHtml(i + 1, m)).join('')}
+                </div>`;
+        }
+
+        function viewerGroupShowMain() {
+            viewerGroupRenderMain();
+        }
+
+        function viewerGroupShowPointTable() {
+            const content = document.getElementById('viewerGroupContent');
+            if (!content || !viewerGroupData) return;
+            const results = Object.values(viewerGroupResultsData || {})
+                .filter(r => r && (r.type === 'pc' || r.type === 'image') && slNormCode(r.code) === viewerGroupCode)
+                .sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')));
+
+            let body = '';
+            if (!results.length) {
+                body = '<p class="text-center text-amber-400 font-teko text-3xl tracking-widest animate-pulse py-10">RESULT COMING SOON...</p>';
+            } else {
+                body = `<div class="space-y-3">${results.map(res => {
+                    if (res.type === 'image') {
+                        return `<div class="bg-black/80 border border-esports-lightPurple rounded-xl p-3">
+                            <p class="text-xs text-esports-yellow font-rajdhani font-bold mb-2">${esc(res.date || viewerGroupData.date)} • ${esc(res.slot || viewerGroupData.slot)}</p>
+                            <img src="${esc(res.image || '')}" alt="Point Table" class="w-full rounded-lg object-contain">
+                        </div>`;
+                    }
+                    const rows = Array.isArray(res.rows) ? res.rows : Object.values(res.rows || {});
+                    const sorted = rows.slice().sort((a, b) =>
+                        (Number(b.total) || 0) - (Number(a.total) || 0) ||
+                        (Number(b.pos) || 0) - (Number(a.pos) || 0) ||
+                        (Number(b.win) || 0) - (Number(a.win) || 0) ||
+                        (Number(b.kills) || 0) - (Number(a.kills) || 0)
+                    ).slice(0, 8);
+                    return `
+                        <div class="bg-black/80 border border-esports-lightPurple rounded-xl p-3 overflow-x-auto">
+                            <div class="flex items-center justify-between gap-2 mb-2 pb-2 border-b border-esports-lightPurple/40">
+                                <span class="text-xs text-esports-yellow font-rajdhani font-bold">${esc(res.date || viewerGroupData.date)} • ${esc(res.lobby || viewerGroupData.lobby)}</span>
+                                <span class="text-[10px] text-gray-400 font-mono">${esc(res.slot || viewerGroupData.slot)}</span>
+                            </div>
+                            <table class="w-full min-w-[520px] text-[11px] font-rajdhani font-bold border-collapse">
+                                <thead><tr class="bg-esports-purple text-esports-yellow">
+                                    <th class="px-2 py-2 text-center">RANK</th>
+                                    <th class="px-2 py-2 text-left">TEAM NAME</th>
+                                    <th class="px-2 py-2 text-center">MP</th>
+                                    <th class="px-2 py-2 text-center">WIN</th>
+                                    <th class="px-2 py-2 text-center">POS.</th>
+                                    <th class="px-2 py-2 text-center">KILLS</th>
+                                    <th class="px-2 py-2 text-center">TOTAL</th>
+                                </tr></thead>
+                                <tbody class="divide-y divide-esports-lightPurple/30">
+                                    ${sorted.map((r, i) => `<tr class="${rankCls(i + 1)}">
+                                        <td class="px-2 py-2 text-center text-esports-yellow font-extrabold">#${i + 1}</td>
+                                        <td class="px-2 py-2 whitespace-nowrap">${esc(r.teamName)}</td>
+                                        <td class="px-2 py-2 text-center">${esc(r.mp)}</td>
+                                        <td class="px-2 py-2 text-center">${esc(r.win)}</td>
+                                        <td class="px-2 py-2 text-center">${esc(r.pos)}</td>
+                                        <td class="px-2 py-2 text-center">${esc(r.kills)}</td>
+                                        <td class="px-2 py-2 text-center text-esports-yellow font-extrabold">${esc(r.total)}</td>
+                                    </tr>`).join('')}
+                                </tbody>
+                            </table>
+                        </div>`;
+                }).join('')}</div>`;
+            }
+
+            content.innerHTML = `
+                ${viewerGroupHeaderHtml(viewerGroupData, false)}
+                ${viewerGroupTabsHtml()}
+                <div class="p-3 overflow-y-auto" style="max-height:calc(100vh - 150px)">
+                    ${body}
+                    <button type="button" onclick="viewerGroupShowMain()" class="w-full mt-3 bg-esports-yellow hover:bg-amber-400 text-black font-teko text-xl font-bold py-2 rounded-xl">BACK</button>
+                </div>`;
+        }
+
+        function viewerGroupShowRule() {
+            const content = document.getElementById('viewerGroupContent');
+            if (!content || !viewerGroupData) return;
+            const rule = normalizeSlotRuleContent(slRuleContent);
+            let body = '';
+            if (rule.mode === 'text' && rule.text) {
+                body = `<div class="bg-black/60 border border-esports-lightPurple rounded-xl p-4 text-left text-sm text-gray-200 font-rajdhani whitespace-pre-line leading-relaxed">${esc(rule.text)}</div>`;
+            } else if (rule.mode === 'link' && rule.link) {
+                body = `<a href="${esc(rule.link)}" target="_blank" rel="noopener" class="block w-full bg-esports-yellow hover:bg-amber-400 text-black font-teko text-xl font-bold py-2 rounded-xl text-center">OPEN RULE LINK</a>`;
+            } else {
+                body = '<p class="text-center text-amber-400 font-teko text-3xl tracking-widest animate-pulse py-10">RULES COMING SOON...</p>';
+            }
+            content.innerHTML = `
+                ${viewerGroupHeaderHtml(viewerGroupData, false)}
+                ${viewerGroupTabsHtml()}
+                <div class="p-3 overflow-y-auto" style="max-height:calc(100vh - 150px)">
+                    ${body}
+                    <button type="button" onclick="viewerGroupShowMain()" class="w-full mt-3 bg-esports-yellow hover:bg-amber-400 text-black font-teko text-xl font-bold py-2 rounded-xl">BACK</button>
+                </div>`;
+        }
+
+        function viewerGroupShowSlotList() {
+            const content = document.getElementById('viewerGroupContent');
+            if (!content || !viewerGroupData) return;
+            const lists = viewerGroupSlotListData;
+            let body = '';
+            if (!lists) {
+                body = '<p class="text-center text-amber-400 font-teko text-3xl tracking-widest animate-pulse py-10">SLOT LIST COMING SOON...</p>';
+            } else {
+                const arr = Object.values(lists).filter(x => x && x.id).sort((a, b) => String(a.id).localeCompare(String(b.id)));
+                body = arr.length
+                    ? `<div class="space-y-3">${arr.map(slRenderListCard).join('')}</div>`
+                    : '<p class="text-center text-amber-400 font-teko text-3xl tracking-widest animate-pulse py-10">SLOT LIST COMING SOON...</p>';
+            }
+            content.innerHTML = `
+                ${viewerGroupHeaderHtml(viewerGroupData, false)}
+                ${viewerGroupTabsHtml()}
+                <div class="p-3 overflow-y-auto" style="max-height:calc(100vh - 150px)">
+                    ${body}
+                    <button type="button" onclick="viewerGroupShowMain()" class="w-full mt-3 bg-esports-yellow hover:bg-amber-400 text-black font-teko text-xl font-bold py-2 rounded-xl">BACK</button>
+                </div>`;
+        }
+
+        function viewerGroupTabsHtml() {
+            return `
+                <div class="grid grid-cols-3 gap-1.5 p-2 border-b border-esports-lightPurple/40">
+                    <button type="button" onclick="viewerGroupShowSlotList()" class="bg-esports-yellow hover:bg-amber-400 text-black font-teko text-lg font-bold py-1.5 rounded-lg leading-none">SLOT LIST</button>
+                    <button type="button" onclick="viewerGroupShowPointTable()" class="bg-sky-500 hover:bg-sky-400 text-white font-teko text-lg font-bold py-1.5 rounded-lg leading-none">POINT TABLE</button>
+                    <button type="button" onclick="viewerGroupShowRule()" class="bg-esports-purple hover:bg-esports-lightPurple border border-esports-lightPurple text-white font-teko text-lg font-bold py-1.5 rounded-lg leading-none">RULE</button>
+                </div>`;
+        }
+
+        function viewerGroupAttachSlotListListener() {
+            if (!slFbOk() || !viewerGroupData) return;
+            const key = slGroupKey(viewerGroupData.slot, viewerGroupData.lobby, viewerGroupData.date);
+            if (viewerGroupSlotListKey === key && viewerGroupSlotListRef) return;
+            try { if (viewerGroupSlotListRef) viewerGroupSlotListRef.off(); } catch (_) {}
+            viewerGroupSlotListKey = key;
+            viewerGroupSlotListData = null;
+            viewerGroupSlotListRef = rskFirebaseDb.ref(RSK_SLOT_LISTS_PATH + '/' + key);
+            viewerGroupSlotListRef.on('value', snap => {
+                viewerGroupSlotListData = snap.val() || null;
+                if (viewerGroupSlotListData === null) viewerGroupSlotListData = null;
+                if (document.getElementById('viewerGroupOverlay') && !document.getElementById('viewerGroupOverlay').classList.contains('hidden')) {
+                    viewerGroupRenderMain();
+                }
+            }, err => console.error('Viewer group slot list listener error:', err));
+        }
+
+        function viewerGroupAttachRoomListener() {
+            if (!slFbOk() || !viewerGroupCode) return;
+            try { if (viewerGroupRoomRef) viewerGroupRoomRef.off(); } catch (_) {}
+            viewerGroupRoomRef = rskFirebaseDb.ref(RSK_SLOT_ROOMS_PATH + '/' + viewerGroupCode);
+            viewerGroupRoomRef.on('value', snap => {
+                viewerGroupRoomData = snap.val() || null;
+                viewerGroupRenderMain();
+            }, err => console.error('Viewer group room listener error:', err));
+        }
+
+        function viewerGroupAttachResultsListener() {
+            if (!slFbOk() || !viewerGroupCode) return;
+            try { if (viewerGroupResultsRef) viewerGroupResultsRef.off(); } catch (_) {}
+            viewerGroupResultsRef = rskFirebaseDb.ref(RSK_RESULTS_PATH).orderByChild('code').equalTo(viewerGroupCode);
+            viewerGroupResultsRef.on('value', snap => {
+                viewerGroupResultsData = snap.val() || {};
+                if (viewerGroupData?.savePointTable) viewerGroupSavePointTable();
+                if (document.getElementById('viewerGroupContent')) viewerGroupRenderMain();
+            }, err => console.error('Viewer group results listener error:', err));
+        }
+
+        function viewerGroupSavePointTable() {
+            if (!viewerGroupData || !viewerGroupData.savePointTable) return;
+            const results = Object.values(viewerGroupResultsData || {})
+                .filter(r => r && (r.type === 'pc' || r.type === 'image') && slNormCode(r.code) === viewerGroupCode);
+            const value = {
+                groupName: viewerGroupData.name || generateViewerGroupName(viewerGroupData),
+                joinCode: viewerGroupCode,
+                resultData: results,
+                savedAt: Date.now()
+            };
+            try { localStorage.setItem(viewerGroupSavedKey(viewerGroupCode), JSON.stringify(value)); }
+            catch (e) { console.warn('Viewer point table localStorage save failed:', e); }
+        }
+
+        function viewerGroupShowSavedPointTable(saved) {
+            const content = document.getElementById('viewerGroupContent');
+            if (!content) return;
+            const g = {
+                name: String(saved.groupName || 'GROUP'),
+                joinCode: viewerGroupCode,
+                lobby: '',
+                slot: '',
+                date: ''
+            };
+            const results = Array.isArray(saved.resultData) ? saved.resultData : [];
+            let body = results.length ? `<div class="space-y-3">${results.map(res => {
+                if (res.type === 'image') return `<div class="bg-black/80 border border-esports-lightPurple rounded-xl p-3"><img src="${esc(res.image || '')}" class="w-full rounded-lg object-contain" alt="Saved Point Table"></div>`;
+                const rows = Array.isArray(res.rows) ? res.rows : Object.values(res.rows || {});
+                const sorted = rows.slice().sort((a,b)=>(Number(b.total)||0)-(Number(a.total)||0)).slice(0,8);
+                return `<div class="bg-black/80 border border-esports-lightPurple rounded-xl p-3 overflow-x-auto">${`<table class="w-full min-w-[520px] text-[11px] font-rajdhani font-bold border-collapse"><thead><tr class="bg-esports-purple text-esports-yellow"><th class="px-2 py-2">RANK</th><th class="px-2 py-2 text-left">TEAM NAME</th><th class="px-2 py-2">MP</th><th class="px-2 py-2">WIN</th><th class="px-2 py-2">POS.</th><th class="px-2 py-2">KILLS</th><th class="px-2 py-2">TOTAL</th></tr></thead><tbody class="divide-y divide-esports-lightPurple/30">${sorted.map((r,i)=>`<tr class="${rankCls(i+1)}"><td class="px-2 py-2 text-center text-esports-yellow">#${i+1}</td><td class="px-2 py-2 whitespace-nowrap">${esc(r.teamName)}</td><td class="px-2 py-2 text-center">${esc(r.mp)}</td><td class="px-2 py-2 text-center">${esc(r.win)}</td><td class="px-2 py-2 text-center">${esc(r.pos)}</td><td class="px-2 py-2 text-center">${esc(r.kills)}</td><td class="px-2 py-2 text-center text-esports-yellow">${esc(r.total)}</td></tr>`).join('')}</tbody></table>`}</div>`;
+            }).join('')}` : '<p class="text-center text-amber-400 font-teko text-3xl tracking-widest py-10">RESULT COMING SOON...</p>';
+            content.innerHTML = `${viewerGroupHeaderHtml(g, true)}
+                <div class="p-3 overflow-y-auto" style="max-height:calc(100vh - 150px)">${body}
+                    <button type="button" onclick="viewerGroupClose()" class="w-full mt-3 bg-esports-yellow hover:bg-amber-400 text-black font-teko text-xl font-bold py-2 rounded-xl">CLOSE</button>
+                </div>`;
+        }
+
+        async function viewerGroupHandleDeleted() {
+            if (viewerGroupDeletedHandled) return;
+            viewerGroupDeletedHandled = true;
+            viewerGroupDetachListeners();
+            let saved = null;
+            try { saved = JSON.parse(localStorage.getItem(viewerGroupSavedKey(viewerGroupCode)) || 'null'); } catch (_) {}
+            if (saved) {
+                viewerGroupShowSavedPointTable(saved);
+            } else {
+                alert('Ye group ab active nahi hai');
+                const overlay = document.getElementById('viewerGroupOverlay');
+                if (overlay) { overlay.classList.add('hidden'); overlay.classList.remove('flex'); }
+            }
+        }
+
+        async function loadViewerGroup() {
+            const params = new URLSearchParams(window.location.search);
+            const code = slNormCode(params.get('group'));
+            if (!code) return;
+            viewerGroupCode = code;
+            viewerGroupDeletedHandled = false;
+            if (!slFbOk()) {
+                alert('Firebase se connect nahi ho paya.');
+                return;
+            }
+            viewerGroupOpenOverlay();
+            const snap = await rskFirebaseDb.ref(RSK_GROUPS_PATH).orderByChild('joinCode').equalTo(code).once('value');
+            const found = snap.val() || {};
+            const ids = Object.keys(found);
+            if (!ids.length) return viewerGroupHandleDeleted();
+
+            const groupId = ids[0];
+            viewerGroupData = found[groupId] || null;
+            if (!viewerGroupData) return viewerGroupHandleDeleted();
+
+            viewerGroupRef = rskFirebaseDb.ref(RSK_GROUPS_PATH + '/' + groupId);
+            viewerGroupRef.on('value', groupSnap => {
+                const g = groupSnap.val();
+                if (!g) return viewerGroupHandleDeleted();
+                viewerGroupData = g;
+                viewerGroupDeletedHandled = false;
+                viewerGroupAttachSlotListListener();
+                viewerGroupAttachRoomListener();
+                viewerGroupAttachResultsListener();
+                viewerGroupRenderMain();
+                if (g.savePointTable) viewerGroupSavePointTable();
+            }, err => console.error('Viewer group listener error:', err));
+
+            viewerGroupAttachSlotListListener();
+            viewerGroupAttachRoomListener();
+            viewerGroupAttachResultsListener();
+            viewerGroupRenderMain();
+        }
+
         // Initialize Page
         initRskFirebase();
+        if (new URLSearchParams(window.location.search).has('group')) loadViewerGroup();
         renderPools();
         renderSocialLinks();
         renderMainNoticePopup();
